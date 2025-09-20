@@ -53,6 +53,8 @@ buildscript {
 
 allprojects {
     repositories {
+        // Prefer local Maven for Jitsi WebRTC builds
+        mavenLocal()
         mavenCentral()
         google()
         maven { url 'https://www.jitpack.io' }
@@ -70,6 +72,10 @@ allprojects {
                     if (details.requested.name == 'react-android') {
                         details.useVersion rootProject.ext.rnVersion
                     }
+                }
+                // Force local Jitsi WebRTC version when available
+                if (details.requested.group == 'org.jitsi' && details.requested.name == 'webrtc') {
+                    details.useVersion '124.0.0'
                 }
             }
         }

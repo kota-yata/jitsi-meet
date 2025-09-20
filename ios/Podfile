@@ -45,6 +45,10 @@ target 'JitsiMeetSDK' do
   pod 'RNCalendarEvents', :path => '../node_modules/react-native-calendar-events'
   pod 'RNGoogleSignin', :path => '../node_modules/@react-native-google-signin/google-signin'
   pod 'RNWatch', :path => '../node_modules/react-native-watch-connectivity'
+  # Force JitsiWebRTC pod to use local repo
+  pod 'JitsiWebRTC', :path => '../../webrtc/ios'
+  # Force react-native-webrtc to use local repository instead of node_modules
+  pod 'react-native-webrtc', :path => '../../react-native-webrtc'
 
   # Native pod dependencies
   #
@@ -76,6 +80,10 @@ target 'JitsiMeetSDKLite' do
     #
 
     cocoa_utilities
+    # Force JitsiWebRTC pod to use local repo for the Lite target as well
+    pod 'JitsiWebRTC', :path => '../../webrtc/ios'
+    # Force react-native-webrtc to use local repository for the Lite target as well
+    pod 'react-native-webrtc', :path => '../../react-native-webrtc'
 end
 
 post_install do |installer|
@@ -103,5 +111,53 @@ post_install do |installer|
 
   # Patch SocketRocket to support TLS 1.3
   %x(patch Pods/SocketRocket/SocketRocket/SRSecurityPolicy.m -N < patches/ws-tls13.diff)
+
+  # Ensure local WebRTC.xcframework is available under Pods/JitsiWebRTC for tools expecting that path.
+  begin
+    require 'fileutils'
+    pods_root = File.join(__dir__, 'Pods')
+    jwr_dir = File.join(pods_root, 'JitsiWebRTC')
+    FileUtils.mkdir_p(jwr_dir)
+    src = File.expand_path(File.join(__dir__, '..', '..', 'webrtc', 'ios', 'WebRTC.xcframework'))
+    dest = File.join(jwr_dir, 'WebRTC.xcframework')
+    if File.exist?(src)
+      # Prefer a real copy to avoid any toolchain quirks with symlinks
+      FileUtils.rm_rf(dest)
+      system('rsync', '-a', '--delete', src + '/', dest + '/')
+    else
+      puts "[post_install] Warning: Missing local WebRTC.xcframework at #{src}"
+    end
+  rescue => e
+    puts "[post_install] Warning: Failed to prepare Pods/JitsiWebRTC/WebRTC.xcframework symlink: #{e}"
+  end
+
+  # Make sure react-native-webrtc target can import the WebRTC module at compile time
+  begin
+    webrtc_slice_device = File.expand_path(File.join(__dir__, '..', '..', 'webrtc', 'ios', 'WebRTC.xcframework', 'ios-arm64'))
+    webrtc_slice_sim = File.expand_path(File.join(__dir__, '..', '..', 'webrtc', 'ios', 'WebRTC.xcframework', 'ios-arm64_x86_64-simulator'))
+    installer.pods_project.targets.each do |t|
+      next unless t.name == 'react-native-webrtc'
+      t.build_configurations.each do |config|
+        fpaths = config.build_settings['FRAMEWORK_SEARCH_PATHS'] || '$(inherited)'
+        hpaths = config.build_settings['HEADER_SEARCH_PATHS'] || '$(inherited)'
+        config.build_settings['FRAMEWORK_SEARCH_PATHS'] = [fpaths, webrtc_slice_device, webrtc_slice_sim]
+        config.build_settings['HEADER_SEARCH_PATHS'] = [hpaths, File.join(webrtc_slice_device, 'WebRTC.framework', 'Headers'), File.join(webrtc_slice_sim, 'WebRTC.framework', 'Headers')]
+        config.build_settings['CLANG_ENABLE_MODULES'] = 'YES'
+      end
+    end
+    # Also patch the generated xcconfig files to be safe
+    %w(debug release).each do |cfg|
+      xc = File.join(__dir__, 'Pods', 'Target Support Files', 'react-native-webrtc', "react-native-webrtc.#{cfg}.xcconfig")
+      next unless File.exist?(xc)
+      File.open(xc, 'a') do |f|
+        f.puts %(FRAMEWORK_SEARCH_PATHS = $(inherited) "${PODS_ROOT}/JitsiWebRTC/WebRTC.xcframework/ios-arm64" "${PODS_ROOT}/JitsiWebRTC/WebRTC.xcframework/ios-arm64_x86_64-simulator")
+        f.puts %(HEADER_SEARCH_PATHS = $(inherited) "${PODS_ROOT}/JitsiWebRTC/WebRTC.xcframework/ios-arm64/WebRTC.framework/Headers" "${PODS_ROOT}/JitsiWebRTC/WebRTC.xcframework/ios-arm64_x86_64-simulator/WebRTC.framework/Headers")
+        f.puts %(CLANG_ENABLE_MODULES = YES)
+        f.puts %(OTHER_MODULE_VERIFIER_FLAGS = $(inherited) -F"${PODS_ROOT}/JitsiWebRTC/WebRTC.xcframework/ios-arm64" -F"${PODS_ROOT}/JitsiWebRTC/WebRTC.xcframework/ios-arm64_x86_64-simulator")
+      end
+    end
+  rescue => e
+    puts "[post_install] Warning: Failed to adjust build settings for react-native-webrtc: #{e}"
+  end
 
 end

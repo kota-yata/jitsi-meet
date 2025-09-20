@@ -25,6 +25,12 @@ module.exports = {
             platforms: {
                 ios: null
             }
+        },
+        'react-native-webrtc': {
+            // Use local pod path in Podfile; disable iOS autolinking to avoid duplicates
+            platforms: {
+                ios: null
+            }
         }
     }
 };
