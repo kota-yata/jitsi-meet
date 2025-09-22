@@ -25,7 +25,7 @@
 #import "ReactUtils.h"
 #import "ScheenshareEventEmiter.h"
 
-#import <react-native-webrtc/WebRTCModuleOptions.h>
+#import <react-native-webrtc/WebRTCModuleOptions.hh>
 
 #if !defined(JITSI_MEET_SDK_LITE)
 #import <RNGoogleSignin/RNGoogleSignin.h>
@@ -240,7 +240,7 @@
 }
 
 - (void)setDefaultConferenceOptions:(JitsiMeetConferenceOptions *)defaultConferenceOptions {
-    
+
     // For testing configOverrides a room needs to be set,
     // thus the following check needs to be commented out
     if (defaultConferenceOptions != nil && defaultConferenceOptions.room != nil) {

@@ -19,6 +19,7 @@ target 'JitsiMeet' do
 
   pod 'Firebase/Analytics', '~> 8.0'
   pod 'Firebase/Crashlytics', '~> 8.0'
+  pod 'JitsiWebRTC', :path => '../../JitsiWebRTC/ios/'
 end
 
 target 'JitsiMeetSDK' do
@@ -37,6 +38,9 @@ target 'JitsiMeetSDK' do
     # An absolute path to your application root.
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
+
+  # Use local JitsiWebRTC instead of the remote podspec
+  pod 'JitsiWebRTC', :path => '../../JitsiWebRTC/ios/'
 
   # We use auto linking, but some dependencies are excluded from the lite build
   # (see react-native.config.js) so we add them here.
@@ -72,6 +76,8 @@ target 'JitsiMeetSDKLite' do
       :app_path => "#{Pod::Config.instance.installation_root}/.."
     )
 
+    # Use local JitsiWebRTC instead of the remote podspec
+    pod 'JitsiWebRTC', :path => '../../JitsiWebRTC/ios/'
     # Native pod dependencies
     #
 

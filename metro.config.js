@@ -34,6 +34,7 @@ const config = {
     },
     // Ensure Metro watches the local package folder so the symlink is followed
     watchFolders: [
+        path.resolve(__dirname, '../JitsiWebRTC/ios'),
         path.resolve(__dirname, '../react-native-webrtc')
     ]
 };
